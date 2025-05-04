@@ -9,64 +9,66 @@
 </head>
 <body class="min-h-screen bg-slate-50 flex flex-col items-center p-6 gap-6">
   <header class="text-center max-w-3xl">
-    <h1 class="text-3xl font-semibold mb-1">OpenAI Token Counter</h1>
-    <p class="text-slate-600">Paste any text, pick an OpenAI chat‑model, and get the exact token count instantly.</p>
+    <h1 class="text-3xl font-semibold mb-2">OpenAI Token Counter</h1>
+    <p class="text-gray-600">Paste any text, pick an OpenAI chat‑model, and get the exact token count instantly.</p>
   </header>
 
-  <main class="w-full max-w-3xl flex flex-col gap-4">
-    <label class="font-medium">Select model
-      <select id="model" class="border rounded-md p-2 w-full mt-1">
-        <option value="gpt-4o-mini">gpt-4o-mini</option>
-        <option value="gpt-4o">gpt-4o</option>
-        <option value="gpt-4-turbo">gpt-4-turbo</option>
+  <main class="w-full max-w-2xl space-y-6">
+    <!-- Model selector -->
+    <div>
+      <label for="model" class="block font-medium mb-1">Select model</label>
+      <select id="model" class="w-full rounded border-gray-300 p-2">
+        <option value="gpt-4o-mini" selected>gpt-4o-mini (GPT‑4 Turbo 2024‑04)</option>
+        <option value="gpt-4-turbo">gpt-4-turbo (legacy 1106)</option>
+        <option value="gpt-4">gpt-4 (legacy)</option>
         <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
       </select>
-    </label>
+    </div>
 
-    <label class="font-medium">Paste text to analyze
-      <textarea id="text" rows="10" class="border rounded-md p-2 w-full mt-1" placeholder="Paste or type text here…"></textarea>
-    </label>
+    <!-- Textarea -->
+    <div>
+      <label for="input" class="block font-medium mb-1">Paste text to analyze</label>
+      <textarea id="input" rows="10" class="w-full rounded border-gray-300 p-2" placeholder="Type or paste text here"></textarea>
+    </div>
 
-    <button id="countBtn" class="self-start bg-blue-600 text-white px-4 py-2 rounded-md shadow hover:bg-blue-700">Count Tokens</button>
+    <!-- Button -->
+    <button id="countBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50" disabled>Count Tokens</button>
 
+    <!-- Result -->
     <p id="result" class="text-lg font-semibold"></p>
   </main>
 
-  <!-- Tiktoken (browser) from jsDelivr CDN  -->
+  <!-- tiktoken setup & UI logic -->
   <script type="module">
-    import init, { encoding_for_model } from "https://cdn.jsdelivr.net/npm/@dqbd/tiktoken@1.0.14/dist/tiktoken_web.js";
+    // Load tiktoken (browser‑friendly lite build)
+    import init, { encoding_for_model } from "https://cdn.jsdelivr.net/npm/@dqbd/tiktoken@1.0.7/lite/+esm";
+    import wasm from "https://cdn.jsdelivr.net/npm/@dqbd/tiktoken@1.0.7/lite/tiktoken_wasm_bg.wasm?url";
 
-    // Cache model encoders after first load
-    const encoderCache = new Map();
+    const countBtn = document.getElementById("countBtn");
+    const resultEl = document.getElementById("result");
 
-    async function getEncoder(model) {
-      if (encoderCache.has(model)) return encoderCache.get(model);
-      // The WASM must be initialised once per page load
-      if (!window.__tiktoken_init) {
-        window.__tiktoken_init = init();
-        await window.__tiktoken_init;
-      }
-      const enc = encoding_for_model(model);
-      encoderCache.set(model, enc);
-      return enc;
-    }
+    // Initialise WASM once, then enable the button
+    init(fetch(wasm)).then(() => {
+      console.log("tiktoken wasm loaded");
+      countBtn.disabled = false;
+    }).catch(err => {
+      console.error("Failed to load tiktoken", err);
+      resultEl.textContent = "⚠️ Could not load tokenizer.";
+    });
 
-    async function countTokens() {
-      const model = document.getElementById('model').value;
-      const text = document.getElementById('text').value || '';
-      const resultEl = document.getElementById('result');
-      resultEl.textContent = 'Calculating…';
+    // Click handler
+    countBtn.addEventListener("click", () => {
+      const text = document.getElementById("input").value || "";
+      const model = document.getElementById("model").value;
       try {
-        const enc = await getEncoder(model);
+        const enc = encoding_for_model(model);
         const tokens = enc.encode(text);
-        resultEl.textContent = `Tokens: ${tokens.length.toLocaleString()}`;
-      } catch (err) {
-        console.error(err);
-        resultEl.textContent = '⚠️ Failed to load tokenizer. Please refresh.';
+        resultEl.textContent = `${tokens.length.toLocaleString()} token${tokens.length !== 1 ? 's' : ''}`;
+      } catch (e) {
+        console.error(e);
+        resultEl.textContent = "⚠️ Unknown model or error counting tokens.";
       }
-    }
-
-    document.getElementById('countBtn').addEventListener('click', countTokens);
+    });
   </script>
 </body>
 </html>
