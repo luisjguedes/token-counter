@@ -4,69 +4,64 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OpenAI Token Counter</title>
-  <!-- Tailwind CSS -->
+  <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen bg-slate-50 flex flex-col items-center p-6 gap-6">
-  <header class="text-center max-w-3xl">
-    <h1 class="text-3xl font-semibold mb-2">OpenAI Token Counter</h1>
-    <p class="text-gray-600">Paste any text, pick an OpenAI chat‑model, and get the exact token count instantly.</p>
+  <header class="text-center max-w-2xl">
+    <h1 class="text-3xl font-semibold mb-1">OpenAI Token Counter</h1>
+    <p class="text-slate-600">Paste any text, pick a chat‑model, and get the exact token count.</p>
   </header>
 
-  <main class="w-full max-w-2xl space-y-6">
-    <!-- Model selector -->
-    <div>
-      <label for="model" class="block font-medium mb-1">Select model</label>
-      <select id="model" class="w-full rounded border-gray-300 p-2">
-        <option value="gpt-4o-mini" selected>gpt-4o-mini (GPT‑4 Turbo 2024‑04)</option>
-        <option value="gpt-4-turbo">gpt-4-turbo (legacy 1106)</option>
-        <option value="gpt-4">gpt-4 (legacy)</option>
-        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-      </select>
-    </div>
+  <label class="w-full max-w-xl mb-2 font-medium">Select model
+    <select id="modelSelect" class="w-full rounded border p-2 mt-1">
+      <option>gpt-4o-mini</option>
+      <option>gpt-4-turbo-2024-03-06</option>
+      <option>gpt-3.5-turbo-0125</option>
+    </select>
+  </label>
 
-    <!-- Textarea -->
-    <div>
-      <label for="input" class="block font-medium mb-1">Paste text to analyze</label>
-      <textarea id="input" rows="10" class="w-full rounded border-gray-300 p-2" placeholder="Type or paste text here"></textarea>
-    </div>
+  <label class="w-full max-w-xl font-medium">Paste text to analyze
+    <textarea id="textInput" rows="10" class="w-full rounded border p-2 mt-2"></textarea>
+  </label>
 
-    <!-- Button -->
-    <button id="countBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50" disabled>Count Tokens</button>
+  <button id="countBtn" disabled
+          class="bg-blue-600 text-white px-6 py-2 rounded shadow mt-4 disabled:opacity-40">
+    Loading tokenizer…
+  </button>
 
-    <!-- Result -->
-    <p id="result" class="text-lg font-semibold"></p>
-  </main>
+  <p id="resultBox" class="mt-4 text-lg font-semibold text-emerald-700"></p>
 
-  <!-- tiktoken setup & UI logic -->
+  <!-- JavaScript: load tiktoken WASM and bind UI -->
   <script type="module">
-    // Load tiktoken (browser‑friendly lite build)
-    import init, { encoding_for_model } from "https://cdn.jsdelivr.net/npm/@dqbd/tiktoken@1.0.7/lite/+esm";
-    import wasm from "https://cdn.jsdelivr.net/npm/@dqbd/tiktoken@1.0.7/lite/tiktoken_wasm_bg.wasm?url";
+    import init, { encoding_for_model } from "https://cdn.jsdelivr.net/npm/@dqbd/tiktoken@1.0.10/dist/tiktoken.js";
 
-    const countBtn = document.getElementById("countBtn");
-    const resultEl = document.getElementById("result");
+    const WASM_URL = "https://cdn.jsdelivr.net/npm/@dqbd/tiktoken@1.0.10/dist/tiktoken_wasm_bg.wasm";
 
-    // Initialise WASM once, then enable the button
-    init(fetch(wasm)).then(() => {
-      console.log("tiktoken wasm loaded");
-      countBtn.disabled = false;
-    }).catch(err => {
-      console.error("Failed to load tiktoken", err);
-      resultEl.textContent = "⚠️ Could not load tokenizer.";
-    });
+    const btn      = document.getElementById("countBtn");
+    const textEl   = document.getElementById("textInput");
+    const modelEl  = document.getElementById("modelSelect");
+    const resultEl = document.getElementById("resultBox");
 
-    // Click handler
-    countBtn.addEventListener("click", () => {
-      const text = document.getElementById("input").value || "";
-      const model = document.getElementById("model").value;
+    try {
+      // Fetch the wasm binary and initialise tiktoken
+      const wasmArrayBuffer = await fetch(WASM_URL).then(r => r.arrayBuffer());
+      await init(wasmArrayBuffer);
+      btn.textContent = "Count Tokens";
+      btn.disabled = false;
+    } catch (e) {
+      console.error("tiktoken init failed", e);
+      btn.textContent = "Tokenizer load failed – check console";
+    }
+
+    btn.addEventListener("click", () => {
       try {
-        const enc = encoding_for_model(model);
-        const tokens = enc.encode(text);
-        resultEl.textContent = `${tokens.length.toLocaleString()} token${tokens.length !== 1 ? 's' : ''}`;
-      } catch (e) {
-        console.error(e);
-        resultEl.textContent = "⚠️ Unknown model or error counting tokens.";
+        const enc    = encoding_for_model(modelEl.value);
+        const tokens = enc.encode(textEl.value).length;
+        resultEl.textContent = `${tokens.toLocaleString()} tokens`;
+      } catch (err) {
+        console.error(err);
+        resultEl.textContent = "Error: see console";
       }
     });
   </script>
