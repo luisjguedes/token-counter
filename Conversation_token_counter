@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenAI Token Counter</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-50 flex flex-col items-center p-6 gap-6">
+  <header class="text-center">
+    <h1 class="text-3xl font-semibold mb-1">OpenAI Token Counter</h1>
+    <p class="text-slate-600">Paste any text, pick a model, and get the exact token count — fully client‑side.</p>
+  </header>
+
+  <!-- Model selector -->
+  <div class="w-full max-w-lg flex flex-col gap-2">
+    <label for="model" class="font-medium">Model</label>
+    <select id="model" class="border rounded-xl p-2">
+      <!-- Common chat/completion models -->
+      <option value="gpt-4o-mini" selected>gpt‑4o‑mini (≃ GPT‑4 Turbo May 2025)</option>
+      <option value="gpt-4-turbo">gpt‑4‑turbo</option>
+      <option value="gpt-3.5-turbo">gpt‑3.5‑turbo</option>
+      <option value="text-davinci-003">text‑davinci‑003</option>
+      <option value="text-embedding-3-small">text‑embedding‑3‑small</option>
+    </select>
+  </div>
+
+  <!-- Text area -->
+  <div class="w-full max-w-lg flex flex-col gap-2">
+    <label for="input" class="font-medium">Text</label>
+    <textarea id="input" rows="10" class="border rounded-xl p-3" placeholder="Paste conversation or document here..."></textarea>
+  </div>
+
+  <!-- Action + result -->
+  <div class="flex flex-col items-center gap-4">
+    <button id="countBtn" class="bg-blue-600 text-white rounded-xl px-6 py-2 shadow hover:bg-blue-700 transition">Count Tokens</button>
+    <div id="result" class="text-xl font-semibold"></div>
+  </div>
+
+  <!-- tiktoken WASM + helper script -->
+  <script type="module">
+    // Lightweight WebAssembly build of tiktoken
+    import { get_encoding, init, Encoding } from "https://cdn.jsdelivr.net/npm/@dqbd/tiktoken@1.0.7/dist/web/index.js";
+
+    const MODEL_TO_ENCODING = {
+      'gpt-4o-mini': 'cl100k_base',      // same as GPT‑4 Turbo & GPT‑3.5‑Turbo
+      'gpt-4-turbo': 'cl100k_base',
+      'gpt-3.5-turbo': 'cl100k_base',
+      'text-davinci-003': 'p50k_base',
+      'text-embedding-3-small': 'cl100k_base'
+    };
+
+    const wasmURL = "https://cdn.jsdelivr.net/npm/@dqbd/tiktoken@1.0.7/dist/web/tiktoken_wasm_bg.wasm";
+
+    // init() loads the wasm binary once
+    await init(wasmURL);
+
+    const modelSel = document.getElementById('model');
+    const inputEl = document.getElementById('input');
+    const resultEl = document.getElementById('result');
+    const btn = document.getElementById('countBtn');
+
+    let curEncoding = get_encoding(MODEL_TO_ENCODING[modelSel.value]);
+
+    modelSel.addEventListener('change', () => {
+      curEncoding.free();
+      curEncoding = get_encoding(MODEL_TO_ENCODING[modelSel.value] || 'cl100k_base');
+    });
+
+    btn.addEventListener('click', () => {
+      const text = inputEl.value;
+      if (!text.trim()) {
+        resultEl.textContent = 'Please paste some text first.';
+        return;
+      }
+      const tokens = curEncoding.encode(text);
+      const count = tokens.length;
+      resultEl.textContent = `${count.toLocaleString()} tokens`;
+      tokens.free();
+    });
+  </script>
+
+  <footer class="mt-auto text-xs text-slate-500">
+    Built with <a href="https://github.com/dqbd/tiktoken" class="underline">@dqbd/tiktoken</a> • No server, all computation in your browser.
+  </footer>
+</body>
+</html>
