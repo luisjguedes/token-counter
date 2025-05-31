@@ -13,12 +13,19 @@
     <p class="text-slate-600">Paste any text, pick a chat‑model, and get the exact token count.</p>
   </header>
 
-  <label class="w-full max-w-xl mb-2 font-medium">Select model
-    <select id="modelSelect" class="w-full rounded border p-2 mt-1">
+  <label class="w-full max-w-xl mb-2 font-medium">Model or encoding
+    <input id="modelInput" list="modelList" class="w-full rounded border p-2 mt-1" placeholder="e.g. gpt-4o" />
+    <datalist id="modelList">
+      <option>gpt-4o</option>
       <option>gpt-4o-mini</option>
       <option>gpt-4-turbo-2024-03-06</option>
+      <option>gpt-4-turbo</option>
       <option>gpt-3.5-turbo-0125</option>
-    </select>
+      <option>gpt-3.5-turbo</option>
+      <option>text-davinci-003</option>
+      <option>text-davinci-002</option>
+      <option>text-embedding-ada-002</option>
+    </datalist>
   </label>
 
   <label class="w-full max-w-xl font-medium">Paste text to analyze
@@ -40,7 +47,7 @@
 
     const btn      = document.getElementById("countBtn");
     const textEl   = document.getElementById("textInput");
-    const modelEl  = document.getElementById("modelSelect");
+    const modelEl  = document.getElementById("modelInput");
     const resultEl = document.getElementById("resultBox");
 
     try {
